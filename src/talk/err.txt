@@ -1,9 +1,0 @@
-search.vue:159 图片搜题失败: TypeError: uni.getFileSystemManager is not a function
-    at search.vue:164:13
-    at new Promise (<anonymous>)
-    at Proxy.fileToBase64 (search.vue:163:14)
-    at Proxy.uploadAndSearch (search.vue:145:35)
-    at success (search.vue:131:16)
-uploadAndSearch	@	search.vue:159
-await in uploadAndSearch		
-success	@	search.vue:131

@@ -1,5 +1,0 @@
-AppKey：204929226
-
-AppSecret：s9h9OJqV8GL2hcUoUaGRpiIZvYHfX8Tt
-
-AppCode：18d6c4bf899041be8d1d993316b26429

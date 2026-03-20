@@ -1,3 +1,0 @@
-1.请在src/pages/result/result.vue页面实现‘收藏题目’和‘加入错题本’功能；
-2.创建‘搜题历史’，‘我的收藏’，‘错题本’三个页面，并在每个页面实现其应有的功能，具体功能可以参考src/talk/topicapi.txt；
-3.请在src/pages/profile/profile.vue页面实现‘搜题历史’，‘我的收藏’，‘错题本’页面的跳转；
