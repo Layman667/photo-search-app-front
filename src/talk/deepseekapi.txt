@@ -1,0 +1,126 @@
+这个对话我有两个功能：
+1.在src/pages/search/search.vue页加一个ai对话功能（卡片需添加），与deepseek建立聊天（页面需添加（单次对话信息存储在本地缓存，不记录进数据库））；
+2.在搜题结果src/pages/result/result.vue页面增加一个推荐相似题目功能，点击推荐相似题目按钮，前端根据模板“请根据***（题目信息匹配当前题目图片），推荐两个同类型同难度的题目和答案，内容简洁一点回复”来传值，并新建题目推荐页面来显示返回结果（返回值使用本地缓存，不记录进数据库）；
+
+## DeepSeek 对话接口（前端对接文档）
+
+### 1) 基础信息
+
+- **线上 Base URL**：`https://fsgcolwltvbb.sealoshzh.site`
+- **接口路径**：`POST /api/deepseek/chat`
+- **完整 URL**：`https://fsgcolwltvbb.sealoshzh.site/api/deepseek/chat`
+- **Content-Type**：`application/json`
+- **鉴权**：前端无需传 DeepSeek Key（由后端代为调用并中转结果）
+- **响应模式**：普通模式（一次性返回完整结果，非流式）
+
+### 2) 请求参数（两种用法，二选一）
+
+#### 用法 A（推荐）：直接传 OpenAI 兼容的 `messages`
+
+```json
+{
+  "model": "deepseek-chat",
+  "messages": [
+    { "role": "system", "content": "你是一个智能AI助手，请用中文回答。" },
+    { "role": "user", "content": "请帮我讲解这道题的解法。" }
+  ],
+  "max_tokens": 1024,
+  "temperature": 0.7
+}
+```
+
+- **说明**：
+  - `messages` 会被后端**原样转发**给 DeepSeek（仅强制 `stream=false`）
+  - 适合前端自己管理多轮上下文
+
+#### 用法 B（简化模式）：`text + images`（适配“历史库里存的图片”）
+
+```json
+{
+  "text": "请解答图片中的题目，并给出步骤。",
+  "images": [
+    "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...",
+    "https://example.com/question.jpg"
+  ],
+  "max_tokens": 1024,
+  "temperature": 0.7
+}
+```
+
+- **说明**：
+  - `images` 支持传：
+    - 历史库里保存的 **base64 DataURL**（推荐存法：`data:image/...;base64,...`）
+    - 或 **可公网访问的图片 URL**
+  - 后端会自动拼装为多模态 `messages` 格式再转发给 DeepSeek
+  - `images` 最多取前 4 张（防止一次传太多）
+
+> 注意：DeepSeek `deepseek-chat` 是否支持图片取决于模型能力与官方支持情况；后端只做格式组装与中转。如果模型不支持，会返回 4xx/错误信息，前端按错误提示处理即可。
+
+### 3) 成功响应
+
+后端会返回统一结构，并额外提供一个便于展示的 `reply`：
+
+```json
+{
+  "code": 200,
+  "message": "OK",
+  "data": {
+    "reply": "这是模型生成的完整回复内容...",
+    "raw": {
+      "id": "chatcmpl-xxx",
+      "object": "chat.completion",
+      "created": 1677858242,
+      "model": "deepseek-chat",
+      "choices": [
+        {
+          "index": 0,
+          "message": { "role": "assistant", "content": "这是模型生成的完整回复内容..." },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": { "prompt_tokens": 56, "completion_tokens": 128, "total_tokens": 184 }
+    }
+  }
+}
+```
+
+- **前端取值**：
+  - 直接展示：`data.reply`
+  - 如需更多信息（usage 等）：`data.raw`
+
+### 4) 失败响应
+
+#### 4.1 参数错误（400）
+
+```json
+{
+  "code": 400,
+  "message": "请求参数错误：messages 不能为空",
+  "data": null
+}
+```
+
+#### 4.2 DeepSeek 返回错误（按 DeepSeek HTTP 状态码透传）
+
+后端会把 DeepSeek 的 HTTP 状态码映射到 `code`，并把 DeepSeek 原始错误体放到 `data` 里：
+
+```json
+{
+  "code": 401,
+  "message": "API Key无效或已过期",
+  "data": {
+    "error": { "message": "..." }
+  }
+}
+```
+
+#### 4.3 网络/超时（502）
+
+```json
+{
+  "code": 502,
+  "message": "DeepSeek 网络连接失败，请稍后重试",
+  "data": null
+}
+```
+

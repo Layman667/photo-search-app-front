@@ -1,0 +1,55 @@
+## 图片存储方式问题（blob URL 导致无法加载）
+
+### 1) 问题说明
+
+- 报错信息：`GET blob:http://localhost:5173/... net::ERR_FILE_NOT_FOUND`
+- 这类 `blob:...` URL 是 **浏览器本地的临时地址**，只在当前页面会话里有效：
+  - 页面刷新、切换设备、换浏览器后就全部失效
+  - 后端和数据库无法通过 `blob:` 链接重新获取图片内容
+- 当前后端的 `questionImage` 字段只是一个字符串存储，对 `blob:` 并不了解，所以**只能原样存入数据库，无法在之后重新展示图片**。
+
+### 2) 前端需要怎么改
+
+当你调用以下接口时：
+
+- `POST /api/history/add`
+- `POST /api/favorite/add`
+- `POST /api/wrong/add`
+
+请求体里的 `questionImage` **不要传 `blob:xxx`**，而应该传以下两种之一：
+
+1. **方案 A：带前缀的 base64 字符串（简单，适合 Demo/小量数据）**
+   - 格式类似：`data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ...`
+   - 可以直接复用你拍照搜题时的 `image_base64` 字段
+   - 存库后，前端展示时直接作为 `<img :src="questionImage">` 即可
+
+2. **方案 B：真实可访问的 HTTP 图片 URL（更适合生产）**
+   - 例如先把图片上传到 OSS/云存储，拿到 URL：`https://xxx.oss-cn-xxx.aliyuncs.com/xxx.jpg`
+   - 保存这个 URL 到 `questionImage`
+   - 展示时同样 `<img :src="questionImage">`
+
+### 3) 建议的前端实现方式示例
+
+假设你目前在前端拿到的是一个 `blob` 对象：
+
+```js
+// 方案 A：转为 base64 再发给后端
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result); // 得到 data:image/...;base64,...
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// 在上传/保存时：
+const dataUrl = await blobToDataUrl(fileBlob);
+await request.post('/api/history/add', {
+  questionImage: dataUrl,
+  analysis: answerText,
+});
+```
+
+> 说明：后端目前已经支持 `questionImage` 为 base64 或普通 URL 字符串，无需后端改动，前端只要避免传 `blob:` 即可。
+

@@ -1,0 +1,5 @@
+uni-h5.es.js:2712 Uncaught (in promise) 
+{errMsg: 'switchTab:fail can not switch to no-tabBar page'}
+（匿名）	@	login.vue:118
+setTimeout		
+handleLogin	@	login.vue:117

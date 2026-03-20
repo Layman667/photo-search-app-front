@@ -1,0 +1,4 @@
+        <view class="stat-item">
+          <text class="stat-number">{{ userStats.mistakes }}</text>
+          <text class="stat-label">错题本</text>
+        </view>
